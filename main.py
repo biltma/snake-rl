@@ -19,29 +19,36 @@ def plot_scores(scores):
     plt.show()
 
 def test_agents(go, agents, N, BATCHES, BATCH_SIZE):
-    scores = defaultdict(lambda: np.zeros(BATCHES))
+    metrics = defaultdict(lambda: {'scores': np.zeros(BATCHES), 'best': -np.inf, 'worst': np.inf})
     for i in range(N):
         for name, Agent in agents.items():
             print(f"Starting {name}")
             agent = Agent()
-            scores[name] += np.array(agent.train(lambda: go.play(agent), BATCHES, BATCH_SIZE, print_batch=False)) / N
+            agent_metrics = agent.train(lambda: go.play(agent), BATCHES, BATCH_SIZE, print_batch=True)
+            metrics[name]['scores'] += np.array(agent_metrics['scores'])
+            metrics[name]['best'] = max(metrics[name]['best'], agent_metrics['best'])
+            metrics[name]['worst'] = min(metrics[name]['worst'], agent_metrics['worst'])
         if True:
             print(f"Completed Batch {i}")
-    plot_scores(scores)
-    return scores
+    
+    for name, metrics in metrics.items():
+        plt.plot(metrics['scores'], label=name)
+    plt.legend()
+    plt.show()
+    return metrics
 
 def play_agent(agent, go):
     return lambda: go.play(agent)
 
 GAME_SIZE = 8
 N = 10
-BATCHES = 250
+BATCHES = 200
 BATCH_SIZE = 1
 
 go = GameObject(GAME_SIZE)
 
-QAgentHigh = lambda: QAgent(discount_factor=0.9, learning_rate=0.0005)
-QAgentLow = lambda: QAgent(discount_factor=0.1, learning_rate=0.0005)
+QAgentHigh = lambda: QAgent(discount_factor=0.9, learning_rate=0.01, epsilon_decay=1)
+QAgentLow = lambda: QAgent(discount_factor=0.1, learning_rate=0.01, epsilon_decay=1)
 
 agents = {"QAgentLow": QAgentLow, "QAgentHigh" : QAgentHigh}
 test_agents(go, agents, N, BATCHES, BATCH_SIZE)
